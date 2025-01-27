@@ -1,6 +1,6 @@
 from importlib.resources import read_text
 from matplotlib.cm import turbo
-from torch import arange, cat, diff, pi, stack, Tensor, tensor
+from numpy import arange, array, concatenate, diff, expand_dims, ndarray, pi, stack
 from typing import Optional
 
 
@@ -53,7 +53,7 @@ class MultiScene:
         </body>
         """
 
-    def add_mesh(self, row: int, col: int, fs: Tensor, faces: Tensor, Ns: Tensor, uvs: Optional[Tensor] = None, wrap_us: bool = False, cs: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_mesh(self, row: int, col: int, fs: ndarray, faces: ndarray, Ns: ndarray, uvs: Optional[ndarray] = None, wrap_us: bool = False, cs: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a mesh to a specified scene, with no colors, colors from a checkerboard pattern, or colors from the Turbo colormap
         
         Note:
@@ -62,28 +62,28 @@ class MultiScene:
         Args:
             row (int): zero-indexed row
             col (int): zero-indexed column
-            fs (Tensor): num_vertices * 3 list of vertex positions
-            faces (Tensor): num_faces * 3 list of vertices per face
-            Ns (Tensor): num_vertices * 3 list of vertex normals
-            uvs (Optional[Tensor]): num_vertices * 2 list of UV coordinates per vertex, in range 0 to 1
+            fs (ndarray): num_vertices * 3 list of vertex positions
+            faces (ndarray): num_faces * 3 list of vertices per face
+            Ns (ndarray): num_vertices * 3 list of vertex normals
+            uvs (Optional[ndarray]): num_vertices * 2 list of UV coordinates per vertex, in range 0 to 1
             wrap_us (bool): whether or not U coordinates should wrap around a seam
-            cs (Optional[Tensor]): num_vertices list of colors from Turbo colormap, in range 0 to 1
+            cs (Optional[ndarray]): num_vertices list of colors from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
         scene_id = row * self.num_cols + col
         if not y_up:
-            fs = fs[..., tensor([1, 2, 0])]
+            fs = fs[..., array([1, 2, 0])]
 
         if not is_animated:
-            fs = fs.unsqueeze(0)
-            Ns = Ns.unsqueeze(0)
+            fs = expand_dims(fs, 0)
+            Ns = expand_dims(Ns, 0)
             
             if uvs is not None:
-                uvs = uvs.unsqueeze(0)
+                uvs = expand_dims(uvs, 0)
 
             if cs is not None:
-                cs = cs.unsqueeze(0)
+                cs = expand_dims(cs, 0)
 
         all_positions = []
         all_indices = []
@@ -98,26 +98,26 @@ class MultiScene:
         for frame in range(len(fs)):
             if uvs is not None and wrap_us:
                 us_by_face = uvs[frame, :, 0][faces]
-                crosses_seam = (diff(us_by_face, dim=-1).abs() > 0.75).any(dim=-1)
+                crosses_seam = (abs(diff(us_by_face, axis=-1)) > 0.75).any(axis=-1)
                 crossing_faces = faces[crosses_seam]
-                crossing_fs = fs[frame, crossing_faces].flatten(end_dim=-2)
-                crossing_Ns = Ns[frame, crossing_faces].flatten(end_dim=-2)
+                crossing_fs = fs[frame, crossing_faces].reshape(-1, 3)
+                crossing_Ns = Ns[frame, crossing_faces].reshape(-1, 3)
 
                 crossing_us_by_face = us_by_face[crosses_seam]
                 crossing_us_by_face += (crossing_us_by_face < 0.5)
                 crossing_us = crossing_us_by_face.flatten()
                 crossing_vs = uvs[frame, :, 1][crossing_faces].flatten()
-                crossing_uvs = stack([crossing_us, crossing_vs], dim=-1)
+                crossing_uvs = stack([crossing_us, crossing_vs], axis=-1)
 
-                all_positions.append(cat([fs[frame], crossing_fs]).flatten().tolist())
-                all_normals.append(cat([Ns[frame], crossing_Ns]).flatten().tolist())
-                wrapped_uvs = cat([uvs[frame], crossing_uvs])
-                wrapped_uvs /= tensor([[2, 1]])
+                all_positions.append(concatenate([fs[frame], crossing_fs]).flatten().tolist())
+                all_normals.append(concatenate([Ns[frame], crossing_Ns]).flatten().tolist())
+                wrapped_uvs = concatenate([uvs[frame], crossing_uvs])
+                wrapped_uvs /= array([[2, 1]])
                 wrapped_uvs = wrapped_uvs.flatten().tolist()
                 all_uvs.append(wrapped_uvs)
 
                 crossing_faces = faces.max() + 1 + arange(len(crossing_fs)).reshape(-1, 3)
-                all_indices.append(cat([faces[~crosses_seam], crossing_faces]).flatten().tolist())
+                all_indices.append(concatenate([faces[~crosses_seam], crossing_faces]).flatten().tolist())
 
             else:
                 all_positions.append(fs[frame].flatten().tolist())
@@ -156,21 +156,21 @@ class MultiScene:
 
         self.obj_strs.append(obj_str)
 
-    def add_point_cloud(self, row: int, col: int, xs: Tensor, radii: float = 0.1, cs: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_point_cloud(self, row: int, col: int, xs: ndarray, radii: float = 0.1, cs: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a point cloud to a specified scene, with no colors or colors from the Turbo colormap
 
         Args:
             row (int): zero-indexed row
             col (int): zero-indexed column
-            xs (Tensor): num_points * 3 list of point positions
+            xs (ndarray): num_points * 3 list of point positions
             radii (float): radii of spheres at points
-            cs (Optional[Tensor]): num_points list of colors from Turbo colormap, in range 0 to 1
+            cs (Optional[ndarray]): num_points list of colors from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
         scene_id = row * self.num_cols + col
         if not y_up:
-            xs = xs[..., tensor([1, 2, 0])]
+            xs = xs[..., array([1, 2, 0])]
 
         positions = xs.tolist()
         has_colors = 'true' if cs is not None else 'false'
@@ -185,25 +185,25 @@ class MultiScene:
 
         self.obj_strs.append(obj_str)
 
-    def add_curve(self, row: int, col: int, xs: Tensor, is_looped: bool = False, radius: float = 0.1, color: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_curve(self, row: int, col: int, xs: ndarray, is_looped: bool = False, radius: float = 0.1, color: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a curve to a specified scene, with no colors or colors from the Turbo colormap
 
         Args:
             row (int): zero-indexed row
             col (int): zero-indexed column
-            xs (Tensor): num_points * 3 list of curve vertex positions
+            xs (ndarray): num_points * 3 list of curve vertex positions
             is_looped (bool): whether or not curve is a loop
             radius (float): radius of tube around curve
-            color (Optional[Tensor]): color from Turbo colormap, in range 0 to 1
+            color (Optional[ndarray]): color from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
         scene_id = row * self.num_cols + col
         if not y_up:
-            xs = xs[..., tensor([1, 2, 0])]
+            xs = xs[..., array([1, 2, 0])]
 
         if is_looped:
-            xs = cat([xs, xs[..., 0:2, :]], dim=-2)
+            xs = concatenate([xs, xs[..., 0:2, :]], axis=-2)
 
         positions = xs.tolist()
         has_colors = 'true' if color is not None else 'false'
@@ -214,7 +214,7 @@ class MultiScene:
             if is_animated == 'true':
                 color = turbo(color)[:, :3].tolist()
             else:
-                color = tensor(turbo(color)[:3]).tolist()
+                color = array(turbo(color)[:3]).tolist()
 
             obj_str = f"""{obj_str}, colors: {color}}}"""
         else:
@@ -235,44 +235,44 @@ class Scene:
     def __init__(self, alpha: float = -pi / 4, beta = 1.25, num_frames: int = -1, frame_length: int = -1):
         self.multi_scene = MultiScene(1, 1, alpha, beta, num_frames, frame_length)
 
-    def add_mesh(self, fs: Tensor, faces: Tensor, Ns: Tensor, uvs: Optional[Tensor] = None, wrap_us: bool = False, cs: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_mesh(self, fs: ndarray, faces: ndarray, Ns: ndarray, uvs: Optional[ndarray] = None, wrap_us: bool = False, cs: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a mesh to scene, with no colors, colors from a checkerboard pattern, or colors from the Turbo colormap
         
         Note:
             If both uvs and cs are provided, cs will be ignored
 
         Args:
-            fs (Tensor): num_vertices * 3 list of vertex positions
-            faces (Tensor): num_faces * 3 list of vertices per face
-            Ns (Tensor): num_vertices * 3 list of vertex normals
-            uvs (Optional[Tensor]): num_vertices * 2 list of UV coordinates per vertex, in range 0 to 1
+            fs (ndarray): num_vertices * 3 list of vertex positions
+            faces (ndarray): num_faces * 3 list of vertices per face
+            Ns (ndarray): num_vertices * 3 list of vertex normals
+            uvs (Optional[ndarray]): num_vertices * 2 list of UV coordinates per vertex, in range 0 to 1
             wrap_us (bool): whether or not U coordinates should wrap around a seam
-            cs (Optional[Tensor]): num_vertices list of colors from Turbo colormap, in range 0 to 1
+            cs (Optional[ndarray]): num_vertices list of colors from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
         self.multi_scene.add_mesh(0, 0, fs, faces, Ns, uvs, wrap_us, cs, y_up, is_animated)
 
-    def add_point_cloud(self, xs: Tensor, radii: float = 0.1, cs: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_point_cloud(self, xs: ndarray, radii: float = 0.1, cs: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a point cloud to scene, with no colors or colors from the Turbo colormap
 
         Args:
-            xs (Tensor): num_points * 3 list of point positions
+            xs (ndarray): num_points * 3 list of point positions
             radii (float): radii of spheres at points
-            cs (Optional[Tensor]): num_points list of colors from Turbo colormap, in range 0 to 1
+            cs (Optional[ndarray]): num_points list of colors from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
         self.multi_scene.add_mesh(0, 0, xs, radii, cs, y_up, is_animated)
 
-    def add_curve(self, xs: Tensor, is_looped: bool = False, radius: float = 0.1, color: Optional[Tensor] = None, y_up: bool = False, is_animated: bool = False):
+    def add_curve(self, xs: ndarray, is_looped: bool = False, radius: float = 0.1, color: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a curve to scene, with no colors or colors from the Turbo colormap
 
         Args:
-            xs (Tensor): num_points * 3 list of curve vertex positions
+            xs (ndarray): num_points * 3 list of curve vertex positions
             is_looped (bool): whether or not curve is a loop
             radius (float): radius of tube around curve
-            color (Optional[Tensor]): color from Turbo colormap, in range 0 to 1
+            color (Optional[ndarray]): color from Turbo colormap, in range 0 to 1
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
