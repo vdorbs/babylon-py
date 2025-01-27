@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'matplotlib',
         'torch'
-    ]
+    ],
     include_package_data=True,
     package_data={
         "babylon": ["render.js"]
