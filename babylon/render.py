@@ -1,3 +1,4 @@
+from importlib.resources import read_text
 from matplotlib.cm import turbo
 from torch import arange, cat, diff, pi, stack, Tensor, tensor
 from typing import Optional
@@ -25,8 +26,7 @@ class MultiScene:
         body_str = row_str * num_rows
         body_str = f"""<canvas id="engineCanvas"></canvas>{body_str}"""
 
-        with open('render.js') as f:
-            js_str = f.read()
+        js_str = read_text('babylon', 'render.js')
 
         self.pre_html_str = f"""
         <!DOCTYPE html>
@@ -278,5 +278,6 @@ class Scene:
         """
         self.multi_scene.add_mesh(0, 0, xs, is_looped, radius, color, y_up, is_animated)
 
-    
-
+    def make(self) -> str:
+        """Generate HTML string for rendering"""
+        return self.multi_scene.make()
