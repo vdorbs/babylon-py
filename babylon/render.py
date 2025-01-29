@@ -263,7 +263,7 @@ class Scene:
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
-        self.multi_scene.add_mesh(0, 0, xs, radii, cs, y_up, is_animated)
+        self.multi_scene.add_point_cloud(0, 0, xs, radii, cs, y_up, is_animated)
 
     def add_curve(self, xs: ndarray, is_looped: bool = False, radius: float = 0.1, color: Optional[ndarray] = None, y_up: bool = False, is_animated: bool = False):
         """Adds a curve to scene, with no colors or colors from the Turbo colormap
@@ -276,7 +276,7 @@ class Scene:
             y_up (bool): whether x points right, y points up, z points forward or x points forward, y points right, z points up
             is_animated (bool): whether or not data is dynamic, to be rendered as an animation
         """
-        self.multi_scene.add_mesh(0, 0, xs, is_looped, radius, color, y_up, is_animated)
+        self.multi_scene.add_curve(0, 0, xs, is_looped, radius, color, y_up, is_animated)
 
     def make(self) -> str:
         """Generate HTML string for rendering"""
